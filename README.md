@@ -41,7 +41,7 @@ src/
 
 ### 环境要求
 - Node.js 16+ 
-- npm 或 yarn
+- npm
 
 ### 安装依赖
 
