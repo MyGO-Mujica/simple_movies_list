@@ -259,6 +259,313 @@ Context 更新 → localStorage 保存
 6. **异步处理** - async/await 处理 API 请求
 7. **组件设计** - Props、状态提升、组件复用
 
+## 📘 JavaScript 到 TypeScript 迁移详解
+
+### 🔄 一、环境配置
+
+#### 1. 安装 TypeScript 依赖
+```bash
+npm install -D typescript @types/react @types/react-dom @types/react-router-dom
+```
+
+**安装的包：**
+- `typescript` - TypeScript 编译器
+- `@types/react` - React 的类型定义
+- `@types/react-dom` - ReactDOM 的类型定义
+- `@types/react-router-dom` - React Router 的类型定义
+
+#### 2. 创建 TypeScript 配置文件
+
+**tsconfig.json**（主配置）：
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
+```
+
+### 📝 二、文件逐个迁移
+
+#### 1. api.js → api.ts
+
+**迁移前（JavaScript）：**
+```javascript
+export const getPopularMovies = async () => {
+    const response = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
+    const data = await response.json()
+    return data.results  // ❌ 不知道返回什么类型
+}
+```
+
+**迁移后（TypeScript）：**
+```typescript
+// ✅ 定义电影数据类型
+export interface Movie {
+  id: number;
+  title: string;
+  poster_path: string;
+  release_date: string;
+  overview: string;
+  vote_average: number;
+  backdrop_path: string;
+}
+
+// ✅ 定义 API 响应类型
+interface ApiResponse {
+  results: Movie[];
+  page: number;
+  total_pages: number;
+}
+
+// ✅ 明确返回类型
+export const getPopularMovies = async (): Promise<Movie[]> => {
+  const response = await fetch(`${BASE_URL}/movie/popular?api_key=${API_KEY}`);
+  const data: ApiResponse = await response.json();
+  return data.results;
+};
+```
+
+**改进点：**
+- ✨ 定义了 `Movie` 接口，描述电影对象结构
+- ✨ 定义了 `ApiResponse` 接口，描述 API 返回格式
+- ✨ 函数返回类型从 `any` 变为 `Promise<Movie[]>`
+- ✨ IDE 现在可以智能提示电影对象的所有属性
+
+#### 2. MovieContext.jsx → MovieContext.tsx
+
+**迁移前（JavaScript）：**
+```javascript
+const MovieContext = createContext()  // ❌ 类型是 any
+
+export const MovieProvider = ({children}) => {
+  const [favorites, setFavorites] = useState([])  // ❌ 数组类型是 any[]
+  
+  const addToFavorites = (movie) => {  // ❌ movie 参数类型未知
+    setFavorites(prev => [...prev, movie])
+  }
+}
+```
+
+**迁移后（TypeScript）：**
+```typescript
+// ✅ 定义 Context 类型
+interface MovieContextType {
+  favorites: Movie[];
+  addToFavorites: (movie: Movie) => void;
+  removeFromFavorites: (movieId: number) => void;
+  isFavorite: (movieId: number) => boolean;
+}
+
+// ✅ Context 有明确类型
+const MovieContext = createContext<MovieContextType | undefined>(undefined);
+
+// ✅ Hook 有类型保护
+export const useMovieContext = () => {
+  const context = useContext(MovieContext);
+  if (!context) {
+    throw new Error("useMovieContext must be used within a MovieProvider");
+  }
+  return context;
+};
+
+// ✅ Props 有类型定义
+interface MovieProviderProps {
+  children: ReactNode;
+}
+
+export const MovieProvider = ({ children }: MovieProviderProps) => {
+  const [favorites, setFavorites] = useState<Movie[]>([]);
+  
+  const addToFavorites = (movie: Movie): void => {
+    setFavorites((prev) => [...prev, movie]);
+  };
+};
+```
+
+**改进点：**
+- ✨ Context 从 `any` 变为 `MovieContextType`
+- ✨ 添加了运行时类型检查
+- ✨ 所有函数参数都有明确类型
+- ✨ 状态使用泛型 `useState<Movie[]>`
+
+#### 3. MovieCard.jsx → MovieCard.tsx
+
+**迁移前（JavaScript）：**
+```javascript
+function MovieCard({movie}) {  // ❌ movie 类型未知
+  function onFavoriteClick(e) {  // ❌ e 类型是 any
+    e.preventDefault()
+    addToFavorites(movie)
+  }
+}
+```
+
+**迁移后（TypeScript）：**
+```typescript
+// ✅ 定义 Props 类型
+interface MovieCardProps {
+  movie: Movie;
+}
+
+function MovieCard({ movie }: MovieCardProps) {
+  // ✅ 事件类型明确
+  function onFavoriteClick(e: React.MouseEvent<HTMLButtonElement>): void {
+    e.preventDefault();
+    addToFavorites(movie);
+  }
+}
+```
+
+**改进点：**
+- ✨ Props 有接口定义
+- ✨ 事件处理函数有精确类型
+- ✨ IDE 输入 `movie.` 时自动提示所有属性
+
+#### 4. Home.jsx → Home.tsx
+
+**迁移前（JavaScript）：**
+```javascript
+function Home() {
+  const [movies, setMovie] = useState([])  // ❌ 数组类型是 any[]
+  const [error, seterror] = useState(null)  // ❌ null | string 不明确
+  
+  const handleSearch = async (e) => {  // ❌ e 类型是 any
+    // ...
+  }
+}
+```
+
+**迁移后（TypeScript）：**
+```typescript
+function Home() {
+  const [movies, setMovie] = useState<Movie[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+    const searchResults = await searchMovies(searchQuery);
+    setMovie(searchResults);
+  };
+}
+```
+
+**改进点：**
+- ✨ 所有状态都有明确的泛型类型
+- ✨ 表单事件类型精确到 `FormEvent<HTMLFormElement>`
+- ✨ 异步函数返回 `Promise<void>`
+
+### 🎯 三、迁移带来的好处
+
+#### 1. 编译时错误检测
+
+**JavaScript（运行时才发现错误）：**
+```javascript
+const movie = { id: 1, title: "复仇者联盟" }
+console.log(movie.titl)  // ❌ 运行时：undefined（属性名拼错）
+```
+
+**TypeScript（写代码时就发现错误）：**
+```typescript
+const movie: Movie = { id: 1, title: "复仇者联盟" }
+console.log(movie.titl)  // ❌ 编译错误：Property 'titl' does not exist
+```
+
+#### 2. 智能代码补全
+
+**JavaScript：**
+```javascript
+movie.  // ❌ IDE 不知道有哪些属性，无法提示
+```
+
+**TypeScript：**
+```typescript
+movie.  // ✅ 自动提示：id, title, poster_path, release_date...
+```
+
+#### 3. 重构更安全
+
+修改函数签名时，TypeScript 会自动标记所有需要修改的调用位置。
+
+#### 4. 防止空值错误
+
+**JavaScript：**
+```javascript
+const storedFavs = localStorage.getItem("favorites")
+const favorites = JSON.parse(storedFavs)  // ❌ 可能崩溃
+```
+
+**TypeScript：**
+```typescript
+const storedFavs: string | null = localStorage.getItem("favorites")
+const favorites = JSON.parse(storedFavs)  // ❌ 编译错误
+
+// ✅ 必须处理 null 情况
+const favorites = storedFavs ? JSON.parse(storedFavs) : []
+```
+
+#### 5. 文档即代码
+
+类型定义本身就是最好的文档，鼠标悬停即可查看完整的类型信息。
+
+#### 6. 发现潜在 Bug
+
+**迁移过程中发现的实际 Bug：**
+
+```javascript
+// ❌ Bug 1：错误的条件判断
+useEffect(() => {
+  const storedFavs = localStorage.getItem("favorites")
+  if(setFavorites) setFavorites(JSON.parse(storedFavs))
+  //  ^^^^^^^^^^^ setFavorites 是函数，永远为 true！
+}, [])
+
+// ✅ 修复
+if(storedFavs) setFavorites(JSON.parse(storedFavs))
+```
+
+```javascript
+// ❌ Bug 2：条件判断逻辑错误
+if (favorites) {  // 数组永远为 truthy
+  return <div>有收藏</div>
+}
+
+// ✅ 修复
+if (favorites.length > 0) {
+  return <div>有收藏</div>
+}
+```
+
+### 📊 迁移前后对比
+
+| 维度 | JavaScript | TypeScript |
+|------|-----------|-----------|
+| **类型安全** | ❌ 运行时才发现错误 | ✅ 编译时就发现错误 |
+| **代码提示** | ⚠️ 有限的提示 | ✅ 完整的智能提示 |
+| **重构支持** | ❌ 手动检查所有引用 | ✅ 自动检测影响范围 |
+| **文档** | ⚠️ 需要额外维护 | ✅ 类型即文档 |
+| **团队协作** | ⚠️ 依赖约定 | ✅ 强制类型规范 |
+| **调试时间** | 😰 更多 | 😊 更少 |
+
+### 🏆 总结
+
+通过迁移到 TypeScript，我们：
+
+✅ **添加了 8 个类型定义文件**（.tsx 文件）  
+✅ **定义了 3 个核心接口**（Movie, MovieContextType, Props）  
+✅ **修复了 2 个潜在 Bug**（条件判断错误）  
+✅ **提升了代码可维护性**（类型安全 + 智能提示）  
+✅ **提高了开发效率**（更少的调试时间）  
+✅ **增强了团队协作**（统一的类型规范）  
+
+**收益远大于成本！** 特别是在项目规模扩大、团队协作、长期维护的场景下，TypeScript 的优势会越来越明显。
 
 ---
 
