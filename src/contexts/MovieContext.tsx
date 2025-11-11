@@ -1,11 +1,21 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { Movie } from "../services/api";
+import type { Movie } from "../types/movie";
 
-// Context 类型定义
+/**
+ * 电影 Context 类型定义
+ * 定义全局共享的电影收藏管理功能
+ */
 interface MovieContextType {
+  /** 收藏的电影列表 */
   favorites: Movie[];
+  
+  /** 添加电影到收藏夹 */
   addToFavorites: (movie: Movie) => void;
+  
+  /** 从收藏夹移除电影 */
   removeFromFavorites: (movieId: number) => void;
+  
+  /** 检查指定电影是否已收藏 */
   isFavorite: (movieId: number) => boolean;
 }
 
@@ -19,7 +29,11 @@ export const useMovieContext = () => {
   return context;
 };
 
+/**
+ * MovieProvider 组件的 Props 接口
+ */
 interface MovieProviderProps {
+  /** 子组件（接受任何可渲染的 React 内容） */
   children: ReactNode;
 }
 
@@ -55,6 +69,8 @@ export const MovieProvider = ({ children }: MovieProviderProps) => {
   };
 
   return (
-    <MovieContext.Provider value={value}>{children}</MovieContext.Provider>
+    <MovieContext.Provider value={value}>
+      {children} {/* 渲染任何传入的子元素 */}
+      </MovieContext.Provider>
   );
 };

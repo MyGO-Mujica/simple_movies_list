@@ -1,8 +1,12 @@
 import "../css/MovieCard.css";
 import { useMovieContext } from "../contexts/MovieContext";
-import { Movie } from "../services/api";
+import type { Movie } from "../types/movie";
 
+/**
+ * MovieCard 组件的 Props 接口
+ */
 interface MovieCardProps {
+  /** 要显示的电影对象 */
   movie: Movie;
 }
 
